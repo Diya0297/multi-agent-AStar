@@ -1,1 +1,1 @@
-# multi-agent-A-
+# multi-agent-AStar
