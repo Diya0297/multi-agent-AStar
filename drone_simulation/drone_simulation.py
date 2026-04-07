@@ -1,9 +1,11 @@
 import copy
-from astar import A_STAR, manhatten
+from astar.astar import A_STAR
+from astar.heuristics import manhatten
 
 class Grid:
-    def __init__(self, size):
-        self.size = size
+    def __init__(self, rows, cols):
+        self.rows = rows
+        self.cols = cols
         self.obstacles = set()
 
     def add_obstacle(self, position):
@@ -11,14 +13,25 @@ class Grid:
 
     def is_obstacle(self, position):
         return tuple(position) in self.obstacles
+    
+    def create_2d_array(self):
+        '''coverts grid into 2D list for astar to read'''
+        grid_array = []
+        for _ in range(self.rows):
+            grid_array.append([0]* self.cols)
+
+        for (r,c) in self.obstacles:
+            grid_array[r][c] = 1
+        
+        return grid_array
 
 
 #building a class drone which will store the position, path and its own known map
 class Drone:
     def __init__(self, drone_id, start_position, destination, grid):
         self.id = drone_id  #each drone will have a unique id
-        self.position = start_position #current position of the drone
-        self.destination = destination #destination 
+        self.position = tuple(start_position) #current position of the drone
+        self.destination = tuple(destination) #destination 
         self.grid = grid #map
 
         self.path=[] #this will be the path from current position to destination position
@@ -28,7 +41,13 @@ class Drone:
 
     def plan_for_path(self): #this calls A* to compute a path from current to destination
         #fake grid representation for A*
-        self.path, _ = A_STAR(tuple(self.position), tuple(self.destination), manhatten)
+        grid_array = self.known_grid.create_2d_array()
+        path, _ = A_STAR(self.position, self.destination, grid_array, manhatten)
+
+        if path:
+            self.path = path
+        else:
+            self.path = []
 
     def next_position(self):
         if not self.path:
@@ -50,14 +69,14 @@ class Drone:
     def process_messages(self, message_queue):
         for message in message_queue:
             if message["type"] == "obstacle":
-                position = message["position"]
+                position = tuple(message["position"])
                 if position not in self.obstacles_known:
                     self.obstacles_known.add(position)
                     self.known_grid.add_obstacle(position)
                     self.replan_as_required(position)
 
     def replan_as_required(self, obstacle_position):
-        if obstacle_position in self.path:
+        if tuple(obstacle_position) in self.path:
             self.plan_for_path()
 
 
@@ -77,9 +96,10 @@ def collision_avoidance(moves):
 
 
 #building a simulaiton loop (all drones move one step per tick simultaneously)
-def simulation(drones, max_steps=50):
+def simulation(drones, grid, max_steps=50):
     message_queue = [] #shared message queue to communicate
     for step in range(max_steps):
+        
         #there will be 3 steps as follows:
         #1: decide moves
         moves={}
@@ -92,34 +112,29 @@ def simulation(drones, max_steps=50):
         #3: shift/move drones
         for drone in drones:
             if moves[drone.id] is not None: #prevents collision
-                drone.position = moves[drone.id]
-                if drone.path:
-                    drone.path.pop(0) #shifts the drone one step forward and also remove that step
+                next_pos = moves[drone.id]
+
+                if next_pos is None:
+                    continue
+                
+                #check if cell drone is moving into has obstacle
+                if grid.is_obstacle(next_pos):
+                    drone.detect_obstacle(next_pos, message_queue)
+
+                    drone.replan_as_required(next_pos) #replan
+                    continue
+
+                drone.shift()
+
         
         #4: process messages
         for drone in drones:
             drone.process_messages(message_queue)
         message_queue.clear() #now we will clear all messages after all drones have read them
 
-def update_simulation(drones, message_queue):
-    #1 - decide moves
-    moves = {drone.id: drone.next_position() for drone in drones}
 
-    #2 - resolve collisions
-    moves = collision_avoidance(moves)
 
-    #3 - move drones
-    for drone in drones:
-        if moves[drone.id] is not None:
-            drone.position = moves[drone.id]
-            if drone.path:
-                drone.path.pop(0)
-    
-    #4 - process messages
-    for drone in drones:
-        drone.process_messages(message_queue)
 
-    message_queue.clear()
 
 
 
