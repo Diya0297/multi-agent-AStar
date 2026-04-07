@@ -44,6 +44,10 @@ class Drone:
         grid_array = self.known_grid.create_2d_array()
         path, _ = A_STAR(self.position, self.destination, grid_array, manhatten_grid)
 
+        ''' TESTING drone path to solve destination bug
+        print(f"Drone {self.id} replanning from {self.position} to {self.destination}")
+        print(f"  Raw path: {path}")'''
+        
         if path:
             if path[0] == self.position:
                 path.pop(0)
@@ -51,6 +55,8 @@ class Drone:
             self.path = [tuple(p) for p in path]
         else:
             self.path = []
+
+        print(f"  Final path: {self.path}")
 
     def next_position(self):
         if self.position == self.destination:
@@ -88,10 +94,20 @@ class Drone:
 
 #this is a basic collision avoidance function using cell reservation
 #if two drones want the same cell, one waits a tick so only one drone per cell
-def collision_avoidance(moves):
+def collision_avoidance(moves, drones):
+    at_goal = set()
+    drone_map = {d.id: d for d in drones}
+    for drone_id, position in moves.items():
+        drone = drone_map[drone_id]
+        if drone.position == drone.destination:
+            at_goal.add(position)
+
     seen={}
     final_moves ={}
     for drone_id, position in moves.items():
+        if position in at_goal:
+            final_moves[drone_id] = position
+            continue
         if position not in seen: #no collision so drone gets the cell
             seen[position] = drone_id
             final_moves[drone_id] = position
@@ -113,7 +129,10 @@ def simulation(drones, grid, max_steps=50):
             moves[drone.id] = drone.next_position()
 
         #2: resolve collisions (this method is defined below)
-        moves = collision_avoidance(moves)
+        active_drones = [d for d in drones if d.position != d.destination]
+
+        moves = {drone.id: drone.next_position() for drone in active_drones}
+        moves = collision_avoidance(moves, active_drones)
 
         #3: shift/move drones
         for drone in drones:

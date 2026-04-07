@@ -123,15 +123,19 @@ def update_simulation():
     current_time = pygame.time.get_ticks()
 
     if current_time - last_move_time > move_delay:
+        active_drones = [d for d in drones if d.position != d.destination]
 
+        if not active_drones:
+            return
+        
         # 1. Decide moves
-        moves = {drone.id: drone.next_position() for drone in drones}
+        moves = {drone.id: drone.next_position() for drone in active_drones}
 
         # 2. Collision avoidance
-        moves = collision_avoidance(moves)
+        moves = collision_avoidance(moves, active_drones)
 
         # 3. Execute moves
-        for drone in drones:
+        for drone in active_drones:
             move = moves[drone.id]
 
             if move is None:
@@ -144,7 +148,7 @@ def update_simulation():
                 drone.shift()
 
         # 4. Share knowledge
-        for drone in drones:
+        for drone in active_drones:
             drone.process_messages(message_queue)
 
         message_queue.clear()
