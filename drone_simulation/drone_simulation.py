@@ -45,14 +45,16 @@ class Drone:
         path, _ = A_STAR(self.position, self.destination, grid_array, manhatten_grid)
 
         if path:
-            if len(path) > 0 and tuple(path[0]) == tuple(self.position):
+            if path[0] == self.position:
                 path.pop(0)
                 
-            self.path = path
+            self.path = [tuple(p) for p in path]
         else:
             self.path = []
 
     def next_position(self):
+        if self.position == self.destination:
+            return self.position
         if not self.path:
             return self.position #no shift if no path exists
         return self.path[0] #returns next step in the path without shifting yet
@@ -79,6 +81,7 @@ class Drone:
                     self.replan_as_required(position)
 
     def replan_as_required(self, obstacle_position):
+        
         if tuple(obstacle_position) in self.path:
             self.plan_for_path()
 
