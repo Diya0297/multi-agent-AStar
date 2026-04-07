@@ -2,73 +2,110 @@ import pygame
 import sys
 import os
 
+# ================== IMPORT TEAM CODE ==================
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from drone_simulation.drone_simulation import Drone, Grid, collision_avoidance
 
-GRID_SIZE = 20
-CELL_SIZE = 50
-WIDTH = GRID_SIZE * CELL_SIZE
-HEIGHT = GRID_SIZE * CELL_SIZE
-
+# ================== CONFIG ==================
+CELL_SIZE = 30
 BACKGROUND = (25, 25, 30)
 GRID_DOT = (60, 60, 70)
 OBSTACLE_COLOR = (220, 50, 50)
 GOAL_COLOR = (50, 220, 50)
 
-DRONE_COLORS = [(50, 150, 255), (255, 200, 50)]
-DRONE_RADIUS = 12
-GLOW_RADIUS = 25
+DRONE_COLORS = [(50, 150, 255), (255, 200, 50), (200, 100, 255), (255, 100, 100)]
+DRONE_RADIUS = 8
+GLOW_RADIUS = 18
 
+# ================== FILE PATH ==================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(BASE_DIR, "medium_collapse.txt")
+
+# ================== PARSER ==================
+def parse_input(file_path):
+    with open(file_path, "r") as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    rows, cols = map(int, lines[0].split())
+    n = int(lines[1])
+
+    # Convert (x,y) → (row,col)
+    def convert(x, y):
+        return (rows - 1 - y, x)
+
+    # Drone positions
+    drone_positions = []
+    for i in range(n):
+        x, y = map(int, lines[2 + i].split())
+        drone_positions.append(convert(x, y))
+
+    # Goal
+    gx, gy = map(int, lines[2 + n].split())
+    goal = convert(gx, gy)
+
+    # Grid using teammate class
+    grid = Grid(rows, cols)
+
+    grid_lines = lines[3 + n:]
+    for r, line in enumerate(grid_lines):
+        for c, val in enumerate(line):
+            if val == "1":
+                grid.add_obstacle((r, c))
+
+    return grid, drone_positions, goal, rows, cols
+
+# ================== LOAD ==================
+grid, drone_starts, goal, ROWS, COLS = parse_input(file_path)
+
+WIDTH = COLS * CELL_SIZE
+HEIGHT = ROWS * CELL_SIZE
+
+# ================== INIT PYGAME ==================
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Disaster Drone Simulation")
+pygame.display.set_caption("A* Drone Simulation")
 clock = pygame.time.Clock()
-
-# ================== GRID ==================
-grid = Grid(GRID_SIZE, GRID_SIZE)  # use Grid from drone_simulation
-
-# ================== GOAL ==================
-goal = (15, 15)
 
 # ================== DRONES ==================
 drones = [
-    Drone(1, (0, 0), goal, grid),
-    Drone(2, (0, 3), goal, grid)
+    Drone(i + 1, start, goal, grid)
+    for i, start in enumerate(drone_starts)
 ]
 
 # ================== DRAW ==================
 def draw_grid():
-    for x in range(GRID_SIZE):
-        for y in range(GRID_SIZE):
-            px = x * CELL_SIZE + CELL_SIZE // 2
-            py = y * CELL_SIZE + CELL_SIZE // 2
+    for r in range(ROWS):
+        for c in range(COLS):
+            px = c * CELL_SIZE + CELL_SIZE // 2
+            py = r * CELL_SIZE + CELL_SIZE // 2
 
-            if grid.is_obstacle((x, y)):
-                pygame.draw.circle(screen, OBSTACLE_COLOR, (px, py), 6)
+            if grid.is_obstacle((r, c)):
+                pygame.draw.circle(screen, OBSTACLE_COLOR, (px, py), 5)
             else:
-                pygame.draw.circle(screen, GRID_DOT, (px, py), 3)
+                pygame.draw.circle(screen, GRID_DOT, (px, py), 2)
 
 def draw_goal():
-    gx, gy = goal
-    px = gx * CELL_SIZE + CELL_SIZE // 2
-    py = gy * CELL_SIZE + CELL_SIZE // 2
+    r, c = goal
+    px = c * CELL_SIZE + CELL_SIZE // 2
+    py = r * CELL_SIZE + CELL_SIZE // 2
     pygame.draw.circle(screen, GOAL_COLOR, (px, py), DRONE_RADIUS)
 
 def draw_drones():
     for drone, color in zip(drones, DRONE_COLORS):
-        # GREEN PATH (planned path)
+
+        # Draw path
         for step in drone.path:
-            px = step[0] * CELL_SIZE + CELL_SIZE // 2
-            py = step[1] * CELL_SIZE + CELL_SIZE // 2
-            pygame.draw.circle(screen, (50, 220, 50), (px, py), 6)
+            px = step[1] * CELL_SIZE + CELL_SIZE // 2
+            py = step[0] * CELL_SIZE + CELL_SIZE // 2
+            pygame.draw.circle(screen, (50, 220, 50), (px, py), 4)
 
-        # CURRENT POSITION
-        x, y = drone.position
-        px = x * CELL_SIZE + CELL_SIZE // 2
-        py = y * CELL_SIZE + CELL_SIZE // 2
+        # Current position
+        r, c = drone.position
+        px = c * CELL_SIZE + CELL_SIZE // 2
+        py = r * CELL_SIZE + CELL_SIZE // 2
 
-        # GLOW EFFECT
-        for i in range(GLOW_RADIUS, DRONE_RADIUS, -3):
+        # Glow
+        for i in range(GLOW_RADIUS, DRONE_RADIUS, -2):
             alpha = int(60 * (i - DRONE_RADIUS) / (GLOW_RADIUS - DRONE_RADIUS))
             surf = pygame.Surface((i * 2, i * 2), pygame.SRCALPHA)
             pygame.draw.circle(surf, (*color, alpha), (i, i), i)
@@ -77,18 +114,18 @@ def draw_drones():
         pygame.draw.circle(screen, color, (px, py), DRONE_RADIUS)
 
 # ================== SIMULATION ==================
-move_delay = 300
+move_delay = 250
 last_move_time = 0
+message_queue = []
 
 def update_simulation():
     global last_move_time
     current_time = pygame.time.get_ticks()
 
     if current_time - last_move_time > move_delay:
+
         # 1. Decide moves
-        moves = {}
-        for drone in drones:
-            moves[drone.id] = drone.next_position()
+        moves = {drone.id: drone.next_position() for drone in drones}
 
         # 2. Collision avoidance
         moves = collision_avoidance(moves)
@@ -96,24 +133,31 @@ def update_simulation():
         # 3. Execute moves
         for drone in drones:
             move = moves[drone.id]
+
             if move is None:
                 continue
 
             if grid.is_obstacle(move):
-                drone.detect_obstacle(move, [])
+                drone.detect_obstacle(move, message_queue)
                 drone.replan_as_required(move)
             else:
                 drone.shift()
 
+        # 4. Share knowledge
+        for drone in drones:
+            drone.process_messages(message_queue)
+
+        message_queue.clear()
         last_move_time = current_time
 
 # ================== CLICK ==================
 def handle_click(pos):
-    x = pos[0] // CELL_SIZE
-    y = pos[1] // CELL_SIZE
+    c = pos[0] // CELL_SIZE
+    r = pos[1] // CELL_SIZE
 
-    if 0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE:
-        grid.add_obstacle((x, y))
+    if 0 <= r < ROWS and 0 <= c < COLS:
+        grid.add_obstacle((r, c))
+
         for drone in drones:
             drone.plan_for_path()
 
@@ -125,6 +169,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             handle_click(pygame.mouse.get_pos())
 
@@ -134,7 +179,7 @@ while running:
     draw_drones()
 
     pygame.display.flip()
-    clock.tick(5)
+    clock.tick(10)
 
 pygame.quit()
 sys.exit()

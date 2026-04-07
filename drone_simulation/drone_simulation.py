@@ -45,6 +45,9 @@ class Drone:
         path, _ = A_STAR(self.position, self.destination, grid_array, manhatten_grid)
 
         if path:
+            if len(path) > 0 and tuple(path[0]) == tuple(self.position):
+                path.pop(0)
+                
             self.path = path
         else:
             self.path = []
