@@ -72,7 +72,7 @@ def A_STAR(start, goal, grid, h_function = manhatten_grid):
                     neighbour_node = Node(neighbour_state, current_node, action, new_g, h_value)
                     #insert to frontier, and update frontier states
                     heapq.heappush(frontier, (neighbour_node.f, neighbour_node))
-                    frontier_states[neighbour_node] = new_g
+                    frontier_states[neighbour_state] = new_g
                      
 
     return None, len(explored)
@@ -89,13 +89,13 @@ def get_neighbours(currPos, grid):
     neighbours = []
 
     #loop through the possible combinations, and add them to neighbours
-    for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+    for dr, dc, action in [(-1,0, "up"), (1,0, "down"), (0,-1, "left"), (0,1, "right")]:
 
         new_r, new_c = row + dr, col + dc
 
         if 0 <= new_r < rows and 0 <= new_c < columns:
-            if grid[new_r, new_c] == 0:
-                neighbours.append((new_r, new_c))
+            if grid[new_r][new_c] == 0:
+                neighbours.append((action,(new_r, new_c)))
             
     return neighbours
 

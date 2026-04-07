@@ -11,7 +11,7 @@ def euclidean(currPos, grid):
     '''
     return ((currPos[0]- grid[0])**2 + (currPos[1]- grid[1])**2 )** 0.5
 
-def manhatten(currPos, grid):
+def manhatten_grid(currPos, grid):
     '''
     Manhatten distance between two positions on a grid
 

@@ -1,6 +1,6 @@
 import copy
 from astar.astar import A_STAR
-from astar.heuristics import manhatten
+from astar.heuristics import manhatten_grid
 
 class Grid:
     def __init__(self, rows, cols):
@@ -42,7 +42,7 @@ class Drone:
     def plan_for_path(self): #this calls A* to compute a path from current to destination
         #fake grid representation for A*
         grid_array = self.known_grid.create_2d_array()
-        path, _ = A_STAR(self.position, self.destination, grid_array, manhatten)
+        path, _ = A_STAR(self.position, self.destination, grid_array, manhatten_grid)
 
         if path:
             self.path = path
