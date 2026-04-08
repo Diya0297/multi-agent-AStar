@@ -2,26 +2,29 @@ import pygame
 import sys
 import os
 
-# ================== IMPORT TEAM CODE ==================
+# IMPORT TEAM CODE
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from drone_simulation.drone_simulation import Drone, Grid, collision_avoidance
 
-# ================== CONFIG ==================
-CELL_SIZE = 30
+# CONFIG
+CELL_SIZE = 25
+
 BACKGROUND = (25, 25, 30)
 GRID_DOT = (60, 60, 70)
 OBSTACLE_COLOR = (220, 50, 50)
 GOAL_COLOR = (50, 220, 50)
 
 DRONE_COLORS = [(50, 150, 255), (255, 200, 50), (200, 100, 255), (255, 100, 100)]
-DRONE_RADIUS = 8
-GLOW_RADIUS = 18
+DRONE_RADIUS = 6
+GLOW_RADIUS = 12
+LAYOUT = "medium_collapse.txt"
 
-# ================== FILE PATH ==================
+# FILE PATH
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-file_path = os.path.join(BASE_DIR, "medium_collapse.txt")
+file_path = os.path.join(BASE_DIR, LAYOUT)
 
-# ================== PARSER ==================
+
+# PARSER 
 def parse_input(file_path):
     with open(file_path, "r") as f:
         lines = [line.strip() for line in f if line.strip()]
@@ -29,7 +32,7 @@ def parse_input(file_path):
     rows, cols = map(int, lines[0].split())
     n = int(lines[1])
 
-    # Convert (x,y) → (row,col)
+    # Convert (x,y) to (row,col)
     def convert(x, y):
         return (rows - 1 - y, x)
 
@@ -54,25 +57,25 @@ def parse_input(file_path):
 
     return grid, drone_positions, goal, rows, cols
 
-# ================== LOAD ==================
+#  LOAD
 grid, drone_starts, goal, ROWS, COLS = parse_input(file_path)
 
 WIDTH = COLS * CELL_SIZE
 HEIGHT = ROWS * CELL_SIZE
 
-# ================== INIT PYGAME ==================
+# INIT PYGAME 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("A* Drone Simulation")
 clock = pygame.time.Clock()
 
-# ================== DRONES ==================
+# DRONES 
 drones = [
     Drone(i + 1, start, goal, grid)
     for i, start in enumerate(drone_starts)
 ]
 
-# ================== DRAW ==================
+# DRAW 
 def draw_grid():
     for r in range(ROWS):
         for c in range(COLS):
@@ -113,7 +116,8 @@ def draw_drones():
 
         pygame.draw.circle(screen, color, (px, py), DRONE_RADIUS)
 
-# ================== SIMULATION ==================
+
+# SIMULATION
 move_delay = 250
 last_move_time = 0
 message_queue = []
@@ -154,7 +158,7 @@ def update_simulation():
         message_queue.clear()
         last_move_time = current_time
 
-# ================== CLICK ==================
+# CLICK 
 def handle_click(pos):
     c = pos[0] // CELL_SIZE
     r = pos[1] // CELL_SIZE
@@ -165,7 +169,7 @@ def handle_click(pos):
         for drone in drones:
             drone.plan_for_path()
 
-# ================== MAIN LOOP ==================
+# MAIN LOOP 
 running = True
 while running:
     screen.fill(BACKGROUND)
