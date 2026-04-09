@@ -73,7 +73,7 @@ def test_start_is_goal():
 
 '''test 5 (comparing heuristics)'''
 def test_compare_heuristics():
-    print("\n Test 5: Manhattan vs Eulidean")
+    print("\n Test 5: Manhattan vs Euclidean")
     #Set up stuff
     grid = make_empty_grid(20,20)
     obs = [(5,5),(5,6),(5,7), (5,8), (10,3), (10,4), (10, 5), (15,12), (15,13)]

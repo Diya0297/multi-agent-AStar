@@ -71,6 +71,7 @@ class Drone:
 
     def detect_obstacle(self, position, message_queue):
         if position not in self.obstacles_known:
+            print(f" [COMMS] Drone {self.id} discovered obstacle at {position} : broadcasting to all drones")
             message_queue.append({
                 "type": "obstacle",
                 "position": position,
@@ -84,11 +85,13 @@ class Drone:
                 if position not in self.obstacles_known:
                     self.obstacles_known.add(position)
                     self.known_grid.add_obstacle(position)
+                    print(f" [COMMS] Drone {self.id} received obstacle at {position} from Drone {message['sender']}")
                     self.replan_as_required(position)
 
     def replan_as_required(self, obstacle_position):
         
         if tuple(obstacle_position) in self.path:
+            print(f"  [REPLAN] Drone {self.id} replanning — obstacle {obstacle_position} is on current path")
             self.plan_for_path()
 
 
