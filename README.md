@@ -26,7 +26,7 @@ Map File Format:
     IMPORTANT: the parser in visual.py automatically converts to (row, col) for internal grid.
 
 Changing Heuristic:   
-    In drone_simulation/drone_simulation.py, find plan_for_path and swap the heuristic in line 45 (where it calls A_STAR(_,_,_, heuristic))
+    In drone_simulation/drone_simulation.py, find plan_for_path and swap the heuristic in line 45 (where it calls A_STAR( _, _, _, heuristic))
 
 IF DRONES ARE STUCK:
 1. check that the rendezvous point in map file is not on an obstacle cell
